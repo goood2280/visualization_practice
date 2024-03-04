@@ -68,3 +68,43 @@ for (cat1, cat2), group_df in df.groupby(['cat1', 'cat2']):
     group_df.to_parquet(file_path)
 
 print("파일 저장 완료.")
+
+
+# 박스플롯 생성 및 Base64 인코딩
+def create_boxplot_base64_for_val1_by_cat3(df, val_column='val1'):
+    plt.figure(figsize=(10, 6))
+    sns.boxplot(x='cat3', y=val_column, data=df)
+    plt.title(f'Boxplot of {val_column} by cat3')
+    plt.xlabel('cat3')
+    plt.ylabel(val_column)
+    
+    buf = BytesIO()
+    plt.savefig(buf, format='png', bbox_inches='tight')
+    plt.close()
+    return base64.b64encode(buf.getvalue()).decode()
+
+# 각 cat3 값에 대한 val1의 통계치 계산
+def calculate_stats_for_val1_by_cat3(df, val_column='val1'):
+    stats_df = df.groupby('cat3')[val_column].describe(percentiles=[0.1, 0.5, 0.9])
+    stats_df['<0.5 count'] = df[df[val_column] < 0.5].groupby('cat3')[val_column].count()
+    return stats_df[['mean', 'std', '10%', '50%', '90%', '<0.5 count']].round(2)
+
+# 박스플롯 및 통계치를 HTML로 포맷팅
+def format_boxplot_and_stats_to_html(boxplot_img_data, stats_df):
+    boxplot_html = f'<img src="data:image/png;base64,{boxplot_img_data}" style="max-width:100%; display: block; margin-left: auto; margin-right: auto;">'
+    stats_html = stats_df.to_html(classes='table table-striped', justify='center')
+    
+    return boxplot_html + '<br>' + stats_html
+
+# 'ProductA'와 'cat3' 기준으로 데이터 필터링
+filtered_productA_df = df[df['cat1'] == 'ProductA']
+
+# 박스플롯 생성
+boxplot_img_data = create_boxplot_base64_for_val1_by_cat3(filtered_productA_df)
+
+# 통계치 계산
+stats_df = calculate_stats_for_val1_by_cat3(filtered_productA_df)
+
+# HTML 컨텐츠 포맷팅 및 출력
+html_content = format_boxplot_and_stats_to_html(boxplot_img_data, stats_df)
+HTML(html_content)
